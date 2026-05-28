@@ -285,5 +285,140 @@ mod metadata_cache_tests {
         let (_, needs_refresh) = client.get_cached_metadata_swr(&anchor);
         assert!(!needs_refresh);
     }
+
+    // -----------------------------------------------------------------------
+    // #244 — CacheConfig-driven TTL tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_get_cache_config_returns_defaults_before_set() {
+        let env = make_env();
+        set_ledger(&env, 0);
+        let contract_id = env.register_contract(None, AnchorKitContract);
+        let client = AnchorKitContractClient::new(&env, &contract_id);
+        let admin = Address::generate(&env);
+        client.initialize(&admin);
+
+        let cfg = client.get_cache_config();
+        // Default: 1 h metadata, 6 h capabilities, 5 min SWR
+        assert_eq!(cfg.metadata_ttl_seconds, 3_600);
+        assert_eq!(cfg.capabilities_ttl_seconds, 21_600);
+        assert_eq!(cfg.swr_ttl_seconds, 300);
+    }
+
+    #[test]
+    fn test_set_and_get_cache_config() {
+        let env = make_env();
+        set_ledger(&env, 0);
+        let contract_id = env.register_contract(None, AnchorKitContract);
+        let client = AnchorKitContractClient::new(&env, &contract_id);
+        let admin = Address::generate(&env);
+        client.initialize(&admin);
+
+        use crate::contract::CacheConfig;
+        let cfg = CacheConfig {
+            metadata_ttl_seconds: 7_200,
+            capabilities_ttl_seconds: 43_200,
+            swr_ttl_seconds: 600,
+        };
+        client.set_cache_config(&cfg);
+
+        let stored = client.get_cache_config();
+        assert_eq!(stored.metadata_ttl_seconds, 7_200);
+        assert_eq!(stored.capabilities_ttl_seconds, 43_200);
+        assert_eq!(stored.swr_ttl_seconds, 600);
+    }
+
+    /// Passing ttl_seconds = 0 to cache_metadata should use the configured default.
+    #[test]
+    fn test_cache_metadata_uses_configured_ttl_when_override_is_zero() {
+        let env = make_env();
+        set_ledger(&env, 0);
+        let contract_id = env.register_contract(None, AnchorKitContract);
+        let client = AnchorKitContractClient::new(&env, &contract_id);
+        let admin = Address::generate(&env);
+        let anchor = Address::generate(&env);
+        client.initialize(&admin);
+
+        use crate::contract::CacheConfig;
+        // Set a short configured TTL so we can test expiry quickly
+        client.set_cache_config(&CacheConfig {
+            metadata_ttl_seconds: 50,
+            capabilities_ttl_seconds: 100,
+            swr_ttl_seconds: 10,
+        });
+
+        let meta = sample_metadata(&env, &anchor);
+        // Pass 0 → should use configured 50 s
+        client.cache_metadata(&anchor, &meta, &0u64);
+
+        // Still fresh at t=49
+        set_ledger(&env, 49);
+        let retrieved = client.get_cached_metadata(&anchor);
+        assert_eq!(retrieved.reputation_score, 9000);
+
+        // Expired at t=51
+        set_ledger(&env, 51);
+        assert!(client.try_get_cached_metadata(&anchor).is_err());
+    }
+
+    /// Passing a non-zero ttl_seconds overrides the configured default.
+    #[test]
+    fn test_cache_metadata_explicit_override_takes_precedence() {
+        let env = make_env();
+        set_ledger(&env, 0);
+        let contract_id = env.register_contract(None, AnchorKitContract);
+        let client = AnchorKitContractClient::new(&env, &contract_id);
+        let admin = Address::generate(&env);
+        let anchor = Address::generate(&env);
+        client.initialize(&admin);
+
+        use crate::contract::CacheConfig;
+        client.set_cache_config(&CacheConfig {
+            metadata_ttl_seconds: 50,
+            capabilities_ttl_seconds: 100,
+            swr_ttl_seconds: 10,
+        });
+
+        let meta = sample_metadata(&env, &anchor);
+        // Explicit override of 200 s — should NOT expire at t=51
+        client.cache_metadata(&anchor, &meta, &200u64);
+
+        set_ledger(&env, 51);
+        let retrieved = client.get_cached_metadata(&anchor);
+        assert_eq!(retrieved.reputation_score, 9000);
+    }
+
+    /// cache_capabilities with ttl_seconds = 0 uses configured capabilities TTL.
+    #[test]
+    fn test_cache_capabilities_uses_configured_ttl_when_override_is_zero() {
+        let env = make_env();
+        set_ledger(&env, 0);
+        let contract_id = env.register_contract(None, AnchorKitContract);
+        let client = AnchorKitContractClient::new(&env, &contract_id);
+        let admin = Address::generate(&env);
+        let anchor = Address::generate(&env);
+        client.initialize(&admin);
+
+        use crate::contract::CacheConfig;
+        client.set_cache_config(&CacheConfig {
+            metadata_ttl_seconds: 50,
+            capabilities_ttl_seconds: 80,
+            swr_ttl_seconds: 10,
+        });
+
+        let toml_url = String::from_str(&env, "https://anchor.example/.well-known/stellar.toml");
+        let caps = String::from_str(&env, "{\"deposits\":true}");
+        client.cache_capabilities(&anchor, &toml_url, &caps, &0u64);
+
+        // Fresh at t=79
+        set_ledger(&env, 79);
+        let cached = client.get_cached_capabilities(&anchor);
+        assert_eq!(cached.capabilities, caps);
+
+        // Expired at t=81
+        set_ledger(&env, 81);
+        assert!(client.try_get_cached_capabilities(&anchor).is_err());
+    }
 }
 

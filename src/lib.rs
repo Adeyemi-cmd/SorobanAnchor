@@ -130,7 +130,7 @@ pub use response_validator::{
     Sep38QuoteResponse, WithdrawResponse,
 };
 pub use retry::{retry_with_backoff, is_retryable, RetryConfig, JitterSource, LedgerJitterSource, MockJitterSource};
-pub use deterministic_hash::{compute_payload_hash, verify_payload_hash};
+pub use deterministic_hash::{compute_payload_hash, verify_payload_hash, verify_hash_bytes};
 pub use webhook::{deliver_webhook, get_dead_letter_webhooks, WebhookDeliveryConfig};
 
 pub use sep6::{
@@ -145,7 +145,7 @@ pub use sep24::{
     InteractiveDepositResponse, InteractiveWithdrawalResponse, Sep24TransactionStatusResponse,
     RawInteractiveDepositResponse, RawInteractiveWithdrawalResponse, RawSep24TransactionResponse,
 };
-pub use contract::{AnchorKitContract, EndpointUpdated};
+pub use contract::{AnchorKitContract, EndpointUpdated, CacheConfig};
 pub use transaction_state_tracker::{TransactionState, TransactionStateRecord};
 pub use transaction_state_tracker::StorageBudgetMonitor;
 pub mod streaming_monitor;
