@@ -116,6 +116,14 @@ pub mod webhook;
 pub mod sep6;
 pub mod sep24;
 pub mod sep38;
+pub use sep38::{
+    fetch_prices, request_firm_quote, is_quote_expired,
+    validate_firm_quote_with_constraints,
+    FirmQuote, Price, RawFirmQuote, RawPrice, QuoteConstraints,
+    CachedQuoteEntry, QuoteCache,
+    QuoteComparator, ScoredQuote, select_best_quote,
+    FeeObservation, AnchorFeeHistory,
+};
 pub mod contract;
 pub mod stellar_toml;
 
