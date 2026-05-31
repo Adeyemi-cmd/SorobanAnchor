@@ -20,6 +20,14 @@ wasm:
 	cargo build --release --target $(WASM_TARGET) --no-default-features --features wasm
 	@ls -lh $(WASM_OUT)
 
+# Formatting
+fmt:
+	cargo fmt --all
+
+fmt-check:
+	cargo fmt --all -- --check
+
+# Linting
 lint:
 	cargo clippy -- -D warnings
 
