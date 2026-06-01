@@ -127,9 +127,9 @@ impl AdminAuditLog {
             error_message: String::from_str(env, error_message),
         };
 
-        // Store the event
-        let entry_key = soroban_sdk::Symbol::new(env, &format!("ADMIN_AUDIT_{}", entry_id));
-        env.storage().instance().set(&entry_key, &event);
+        // Store the event using entry_id as part of the key
+        let entry_key = soroban_sdk::Symbol::new(env, "ADMIN_AUDIT");
+        env.storage().instance().set(&(entry_key, entry_id), &event);
         env.storage()
             .instance()
             .extend_ttl(config.ttl_seconds as u32, config.ttl_seconds as u32);
@@ -146,7 +146,7 @@ impl AdminAuditLog {
         env.events().publish(
             (
                 soroban_sdk::symbol_short!("admin"),
-                soroban_sdk::symbol_short!("config_change"),
+                soroban_sdk::symbol_short!("audit"),
                 entry_id,
             ),
             event,
@@ -155,8 +155,8 @@ impl AdminAuditLog {
 
     /// Get an admin audit log entry by ID
     pub fn get_entry(env: &Env, entry_id: u64) -> Option<AdminConfigChangeEvent> {
-        let entry_key = soroban_sdk::Symbol::new(env, &format!("ADMIN_AUDIT_{}", entry_id));
-        env.storage().instance().get(&entry_key)
+        let entry_key = soroban_sdk::Symbol::new(env, "ADMIN_AUDIT");
+        env.storage().instance().get(&(entry_key, entry_id))
     }
 
     /// Get the total number of audit entries

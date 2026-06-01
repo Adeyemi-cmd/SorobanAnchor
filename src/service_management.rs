@@ -44,7 +44,7 @@ pub struct ServiceManager;
 impl ServiceManager {
     /// Enable a service for an anchor
     pub fn enable_service(env: &Env, anchor: &Address, service_code: u32) -> bool {
-        let state_key = soroban_sdk::Symbol::new(env, &format!("SVC_STATE_{}", anchor));
+        let state_key = (soroban_sdk::Symbol::new(env, "SVC_STATE"), anchor);
         let mut state: ServiceToggleState = env
             .storage()
             .persistent()
@@ -86,7 +86,7 @@ impl ServiceManager {
 
     /// Disable a service for an anchor
     pub fn disable_service(env: &Env, anchor: &Address, service_code: u32) -> bool {
-        let state_key = soroban_sdk::Symbol::new(env, &format!("SVC_STATE_{}", anchor));
+        let state_key = (soroban_sdk::Symbol::new(env, "SVC_STATE"), anchor);
         let mut state: ServiceToggleState = env
             .storage()
             .persistent()
@@ -128,7 +128,7 @@ impl ServiceManager {
 
     /// Get current service toggle state for an anchor
     pub fn get_service_state(env: &Env, anchor: &Address) -> ServiceToggleState {
-        let state_key = soroban_sdk::Symbol::new(env, &format!("SVC_STATE_{}", anchor));
+        let state_key = (soroban_sdk::Symbol::new(env, "SVC_STATE"), anchor);
         env.storage()
             .persistent()
             .get(&state_key)
@@ -173,7 +173,7 @@ impl ServiceManager {
             description: String::from_str(env, description),
         };
 
-        let snapshot_key = soroban_sdk::Symbol::new(env, &format!("SVC_SNAP_{}", snapshot_id));
+        let snapshot_key = (soroban_sdk::Symbol::new(env, "SVC_SNAP"), snapshot_id);
         env.storage().instance().set(&snapshot_key, &snapshot);
         env.storage().instance().extend_ttl(31_536_000, 31_536_000);
 
@@ -187,14 +187,14 @@ impl ServiceManager {
 
     /// Get a service configuration snapshot
     pub fn get_snapshot(env: &Env, snapshot_id: u64) -> Option<ServiceConfigSnapshot> {
-        let snapshot_key = soroban_sdk::Symbol::new(env, &format!("SVC_SNAP_{}", snapshot_id));
+        let snapshot_key = (soroban_sdk::Symbol::new(env, "SVC_SNAP"), snapshot_id);
         env.storage().instance().get(&snapshot_key)
     }
 
     /// Rollback to a previous service configuration
     pub fn rollback_to_snapshot(env: &Env, snapshot_id: u64) -> bool {
         if let Some(snapshot) = Self::get_snapshot(env, snapshot_id) {
-            let state_key = soroban_sdk::Symbol::new(env, &format!("SVC_STATE_{}", snapshot.anchor));
+            let state_key = (soroban_sdk::Symbol::new(env, "SVC_STATE"), &snapshot.anchor);
 
             let mut state = ServiceToggleState {
                 anchor: snapshot.anchor.clone(),
@@ -222,7 +222,7 @@ impl ServiceManager {
 
     /// Enable all services for an anchor
     pub fn enable_all_services(env: &Env, anchor: &Address, all_services: &Vec<u32>) {
-        let state_key = soroban_sdk::Symbol::new(env, &format!("SVC_STATE_{}", anchor));
+        let state_key = (soroban_sdk::Symbol::new(env, "SVC_STATE"), anchor);
 
         let state = ServiceToggleState {
             anchor: anchor.clone(),
@@ -239,7 +239,7 @@ impl ServiceManager {
 
     /// Disable all services for an anchor
     pub fn disable_all_services(env: &Env, anchor: &Address, all_services: &Vec<u32>) {
-        let state_key = soroban_sdk::Symbol::new(env, &format!("SVC_STATE_{}", anchor));
+        let state_key = (soroban_sdk::Symbol::new(env, "SVC_STATE"), anchor);
 
         let state = ServiceToggleState {
             anchor: anchor.clone(),
